@@ -467,6 +467,9 @@ public:
     void Save(const QString &filename);
     void Delete();
     bool Valid();
+    
+    Item AttachClosest();
+    void DetachAll(const Item &parent = NULL);
 
     QList<Item> Childs();
     bool Visible();

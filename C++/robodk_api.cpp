@@ -424,6 +424,30 @@ bool Item::Valid(){
     return _PTR != NULL;
 }
 
+/// <summary>
+/// Attaches the closest object to the provided tool (see also: Set_Parent_Static).
+/// </summary>
+/// <returns>item -> returns the item that was attached (item.Valid() is False if none found)</returns>
+Item Item::AttachClosest() {
+  _RDK->_check_connection();
+  _RDK->_send_Line("Attach_Closest");
+  _RDK->_send_Item(this);
+  Item attached = _RDK->_recv_Item();
+  _RDK->_check_status();
+  return attached;
+}
+
+/// <summary>
+/// Detaches any object attached to a tool (see also: setParentStatic).
+/// </summary>
+/// <param name="parent">item (optional) -> parent to leave the objects</param>
+void Item::DetachAll(const Item &parent) {
+  _RDK->_check_connection();
+  _RDK->_send_Line("Detach_All");
+  _RDK->_send_Item(this);
+  _RDK->_send_Item(parent);
+  _RDK->_check_status();
+}
 
 ////// add more methods
 /// <summary>
