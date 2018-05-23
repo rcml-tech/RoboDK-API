@@ -8,4 +8,3 @@ C++/build_msvc2017/Release/*
 *.suo
 *.db
 *.ipch
-packages
