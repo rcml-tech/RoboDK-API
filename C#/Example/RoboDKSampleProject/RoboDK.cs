@@ -28,6 +28,8 @@ using System.Diagnostics;
 using System.Net.Sockets;       // For Socket communication
 using Microsoft.Win32;          // For registry keys
 using System.IO;
+using System.Net;
+using System.Threading;
 
 /// <summary>
 /// Matrix class for robotics. 
@@ -1204,6 +1206,46 @@ public class RoboDK
     public const int FLAG_ITEM_NONE = 0;
     public const int FLAG_ITEM_ALL = 64 + 32 + 8 + 4 + 2 + 1;
 
+    // Robot types
+    public const int MAKE_ROBOT_1R=1;
+    public const int MAKE_ROBOT_2R=2;
+    public const int MAKE_ROBOT_3R=3;
+    public const int MAKE_ROBOT_1T=4;
+    public const int MAKE_ROBOT_2T=5;
+    public const int MAKE_ROBOT_3T=6;
+    public const int MAKE_ROBOT_6DOF=7;
+    public const int MAKE_ROBOT_7DOF=8;
+    public const int MAKE_ROBOT_SCARA = 9;
+
+    // Path Error bit mask
+    public const int ERROR_KINEMATIC = 0b001;          // One or more points is not reachable
+    public const int ERROR_PATH_LIMIT = 0b010;         // The path reaches the limit of joint axes
+    public const int ERROR_PATH_SINGULARITY = 0b100;   // The robot reached a singularity point
+    public const int ERROR_COLLISION = 0b100000;       // Collision detected
+
+    // Interactive selection option (for 3D mouse behavior and setInteractiveMode)
+    public const int SELECT_NONE     =0;
+    public const int SELECT_RECTANGLE=1;
+    public const int SELECT_ROTATE   =2;
+    public const int SELECT_ZOOM     =3;
+    public const int SELECT_PAN      =4;
+    public const int SELECT_MOVE     =5;
+    public const int SELECT_MOVE_SHIFT = 6;
+
+    // Bit masks to show specific reference frames and customize the display of references (for picking references with the 3D mouse and setInteractiveMode)
+    public const int DISPLAY_REF_DEFAULT =     -1;
+    public const int DISPLAY_REF_NONE    =      0;
+    public const int DISPLAY_REF_TX  =       0b001;
+    public const int DISPLAY_REF_TY  =       0b010;
+    public const int DISPLAY_REF_TZ  =       0b100;
+    public const int DISPLAY_REF_RX  =    0b001000;
+    public const int DISPLAY_REF_RY  =    0b010000;
+    public const int DISPLAY_REF_RZ  =    0b100000;
+    public const int DISPLAY_REF_PXY = 0b001000000;
+    public const int DISPLAY_REF_PXZ = 0b010000000;
+    public const int DISPLAY_REF_PYZ = 0b100000000;
+    public const int DISPLAY_REF_ALL = 0b111111111;
+
 
     public System.Diagnostics.Process PROCESS = null; // pointer to the process
     public string LAST_STATUS_MESSAGE = ""; // holds any warnings for the last call
@@ -1308,6 +1350,16 @@ public class RoboDK
     bool check_color(double[] color)
     {
         if (color.Length < 4)
+        {
+            throw new RDKException("Invalid color. A color must be a 4-size double array [r,g,b,a]"); //raise Exception('Problems running function');
+            //return false;
+        }
+        return true;
+    }
+    //Formats the color in a vector of size 4x1 and ranges [0,1]
+    bool check_color(List<double> color)
+    {
+        if (color.Count < 4)
         {
             throw new RDKException("Invalid color. A color must be a 4-size double array [r,g,b,a]"); //raise Exception('Problems running function');
             //return false;
@@ -1544,6 +1596,16 @@ public class RoboDK
         }
         return null;
     }
+    // Receives an array of doubles
+    List<double> _recv_ArrayList()
+    {
+        double[] arraydbl = _recv_Array();
+        List<double> listdbl = new List<double>();
+        foreach (double dbl in arraydbl) {
+            listdbl.Add(dbl);
+        }
+        return listdbl;
+    }
 
     // sends a 2 dimensional matrix
     void _send_Matrix2D(Mat mat)
@@ -1722,7 +1784,7 @@ public class RoboDK
         foreach (string st in read_list)
         {
             string st2 = st.Trim();
-            if (extension_filter.Length > 0 && st2.ToLower().EndsWith(extension_filter.ToLower()))
+            if (extension_filter.Length == 0 || st2.ToLower().EndsWith(extension_filter.ToLower()))
             {
                 rdk_list.Add(st2);
             }
@@ -1853,6 +1915,7 @@ public class RoboDK
                 string arguments = "";
                 if (PORT_FORCED > 0)
                 {
+                    PORT_START = PORT_FORCED;
                     arguments = arguments + "/PORT=" + PORT_FORCED.ToString() + " ";
                 }
                 if (START_HIDDEN)
@@ -1869,7 +1932,7 @@ public class RoboDK
                     string install_path = null;
 
                     // retrieve install path from the registry:
-                    /*RegistryKey localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry64);
+                    RegistryKey localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry64);
                     localKey = localKey.OpenSubKey(@"SOFTWARE\RoboDK");
                     if (localKey != null)
                     {
@@ -1878,7 +1941,9 @@ public class RoboDK
                         {
                             APPLICATION_DIR = install_path + "\\bin\\RoboDK.exe";
                         }
-                    }*/
+                    }
+                    /*
+                    // .Net 2.0
                     RegistryKey regKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\RoboDK", false);
                     if (regKey is RegistryKey) // check if the registry was opened
                     {
@@ -1888,12 +1953,18 @@ public class RoboDK
                         {
                             APPLICATION_DIR = install_path + "\\bin\\RoboDK.exe";
                         }
-                    }
+                    }*/
                 }
                 if (APPLICATION_DIR == "")
                 {
                     APPLICATION_DIR = "C:/RoboDK/bin/RoboDK.exe";
                 }
+
+                //PROCESS = System.Diagnostics.Process.Start(APPLICATION_DIR, arguments);
+                //connected = WaitForTcpServerPort(PORT_START, 10000);
+
+                //PROCESS.WaitForInputIdle(); // only works if RoboDK is displayed
+
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = APPLICATION_DIR,
@@ -1903,8 +1974,9 @@ public class RoboDK
                 };
                 PROCESS = System.Diagnostics.Process.Start(processStartInfo);
                 // wait for the process to get started
-                //PROCESS.WaitForInputIdle(10000);
-                // wait for RoboDK to output (stdout) RoboDK is Running. Works after v3.4.0.
+                
+                // wait for RoboDK to output (stdout) RoboDK is Running. Works after v3.4.0. Warning! This poses some issues when reading STEP files. 
+                // They generate a lot of STDOUT and the buffer may have to be emptied.
                 string line = "";
                 while (line != null && !line.Contains("RoboDK is Running"))
                 {
@@ -1914,6 +1986,7 @@ public class RoboDK
                 {
                     connected = false;
                 }
+                PROCESS.StandardOutput.Close();
             }
         }
         if (connected && !Set_connection_params())
@@ -1922,6 +1995,72 @@ public class RoboDK
             PROCESS = null;
         }
         return connected;
+    }
+
+    /// <summary>
+    /// Check if RoboDK was installed from RoboDK's official installer
+    /// </summary>
+    /// <returns></returns>
+    public static bool RoboDKInstallFound()
+    {
+        return RoboDKInstallPath() != null;
+    }
+
+    /// <summary>
+    /// Return the RoboDK install path according to the registry (saved by RoboDK installer)
+    /// </summary>
+    /// <returns></returns>
+    public static string RoboDKInstallPath()
+    {
+        // retrieve install path from the registry:
+        RegistryKey localKey = RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, RegistryView.Registry64);
+        localKey = localKey.OpenSubKey(@"SOFTWARE\RoboDK");
+        if (localKey != null)
+        {
+            string install_path = localKey.GetValue("INSTDIR").ToString();
+            if (install_path != null)
+            {
+                return install_path + "\\bin\\RoboDK.exe";
+            }
+        }
+        /*
+        // .Net 2.0
+        RegistryKey regKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\RoboDK", false);
+        if (regKey is RegistryKey) // check if the registry was opened
+        {
+            install_path = regKey.GetValue("INSTDIR").ToString();
+            regKey.Close();
+            if (install_path != null)
+            {
+                return = install_path + "\\bin\\RoboDK.exe";
+            }
+        }*/
+        return null;
+    }
+
+    private static bool WaitForTcpServerPort(int serverPort, int millisecondsTimeout)
+    {
+        int sleepTime = 100;
+        bool serverPortIsOpen = false;
+        while ((serverPortIsOpen == false) && (millisecondsTimeout > 0))
+        {
+            //TcpConnectionInformation[] tcpConnInfoArray = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections();
+            IPEndPoint[] objEndPoints = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
+            foreach (var tcpEndPoint in objEndPoints)
+            {
+                if (tcpEndPoint.Port == serverPort)
+                {
+                    serverPortIsOpen = true;
+                    break;
+                }
+            }
+            if (serverPortIsOpen == false)
+            {
+                Thread.Sleep(sleepTime);
+                millisecondsTimeout -= sleepTime;
+            }
+        }
+        return serverPortIsOpen;
     }
 
 
@@ -2050,6 +2189,16 @@ public class RoboDK
     }
 
     /// <summary>
+    /// Fit all
+    /// </summary>
+    public void FitAll()
+    {
+        _check_connection();
+        _send_Line("FitAll");
+        _check_status();
+    }
+
+    /// <summary>
     /// Hides the RoboDK window
     /// </summary>
     public void HideRoboDK()
@@ -2166,7 +2315,9 @@ public class RoboDK
         _send_Line("Add");
         _send_Line(filename);
         _send_Item(parent);
-        Item newitem = _recv_Item();
+        _COM.ReceiveTimeout = 3600 * 1000;
+        Item newitem = _recv_Item();    
+        _COM.ReceiveTimeout = _TIMEOUT;        
         _check_status();
         return newitem;
     }
@@ -2215,7 +2366,9 @@ public class RoboDK
         _send_Matrix2D(triangle_points);
         _send_Item(add_to);
         _send_Int(shape_override ? 1 : 0);
+        _COM.ReceiveTimeout = 3600 * 1000;
         Item newitem = _recv_Item();
+        _COM.ReceiveTimeout = _TIMEOUT;
         _check_status();
         return newitem;
     }
@@ -2237,7 +2390,9 @@ public class RoboDK
         _send_Item(reference_object);
         _send_Int(add_to_ref ? 1 : 0);
         _send_Int(projection_type);
+        _COM.ReceiveTimeout = 3600 * 1000;
         Item newitem = _recv_Item();
+        _COM.ReceiveTimeout = _TIMEOUT;
         _check_status();
         return newitem;
     }
@@ -2258,7 +2413,9 @@ public class RoboDK
         _send_Item(reference_object);
         _send_Int(add_to_ref ? 1 : 0);
         _send_Int(projection_type);
+        _COM.ReceiveTimeout = 3600 * 1000;
         Item newitem = _recv_Item();
+        _COM.ReceiveTimeout = _TIMEOUT;
         _check_status();
         return newitem;
     }
@@ -2277,7 +2434,9 @@ public class RoboDK
         _send_Matrix2D(points);
         _send_Item(object_project);
         _send_Int(projection_type);
+        _COM.ReceiveTimeout = 3600 * 1000;
         Mat projected_points = _recv_Matrix2D();
+        _COM.ReceiveTimeout = _TIMEOUT;
         _check_status();
         return projected_points;
     }
@@ -2633,6 +2792,24 @@ public class RoboDK
         _check_status();
     }
 
+    /// <summary>
+    /// Returns the list of open stations in RoboDK
+    /// </summary>
+    /// <returns></returns>
+    public List<Item> GetOpenStations()
+    {
+        _check_connection();
+        _send_Line("G_AllStn");
+        int nstn = _recv_Int();
+        List<Item> list_stn = new List<Item>();
+        for (int i = 0; i < nstn; i++)
+        {
+            Item station = _recv_Item();
+            list_stn.Add(station);
+        }
+        _check_status();
+        return list_stn;
+    }
 
     /// <summary>
     /// Returns the active station item (station currently visible)
@@ -2977,6 +3154,7 @@ public class RoboDK
     }
 
 
+
     //------------------------------------------------------------------
     //----------------------- CAMERA VIEWS -----------------------------
     /// <summary>
@@ -3070,7 +3248,7 @@ public class RoboDK
     /// Returns the list of items selected (it can be one or more items)
     /// </summary>
     /// <returns></returns>
-    public List<Item> Selection()
+    public List<Item> GetSelectedItems()
     {
         _check_connection();
         _send_Line("G_Selection");
@@ -3084,6 +3262,61 @@ public class RoboDK
         return list_items;
     }
 
+    /// <summary>
+    /// Set the interactive mode to define the behavior when navigating and selecting items in RoboDK's 3D view.
+    /// </summary>
+    /// <param name="mode_type">The mode type defines what accion occurs when the 3D view is selected (Select object, Pan, Rotate, Zoom, Move Objects, ...)</param>
+    /// <param name="default_ref_flags">When a movement is specified, we can provide what motion we allow by default with respect to the coordinate system (set apropriate flags)</param>
+    /// <param name="custom_items">Provide a list of optional items to customize the move behavior for these specific items (important: the lenght of custom_ref_flags must match)</param>
+    /// <param name="custom_ref_flags">Provide a matching list of flags to customize the movement behavior for specific items</param>
+    public void SetInteractiveMode(int mode_type=SELECT_MOVE, int default_ref_flags = DISPLAY_REF_DEFAULT, List<Item> custom_items=null, List<int> custom_ref_flags=null)
+    {
+        _check_connection();
+        _send_Line("S_InteractiveMode");
+        _send_Int(mode_type);
+        _send_Int(default_ref_flags);
+        if (custom_items == null || custom_ref_flags == null)
+        {
+            _send_Int(-1);
+        } else
+        {
+            int n_custom = Math.Min(custom_items.Count, custom_ref_flags.Count);
+            _send_Int(n_custom);
+            for (int i=0; i<n_custom; i++)
+            {
+                _send_Item(custom_items[i]);
+                _send_Int(custom_ref_flags[i]);
+            }
+        }
+        _check_status();
+    }
+
+    /// <summary>
+    /// Returns the position of the cursor as XYZ coordinates (by default), or the 3D position of a given set of 2D coordinates of the window (x & y coordinates in pixels from the top left corner)
+    /// The XYZ coordinates returned are given with respect to the RoboDK station(absolute reference).
+    /// If no coordinates are provided, the current position of the cursor is retrieved.
+    /// </summary>
+    /// <param name="x_coord">X coordinate in pixels</param>
+    /// <param name="y_coord">Y coordinate in pixels</param>
+    /// <param name="xyz_station"></param>
+    /// <returns></returns>
+    public Item GetCursorXYZ(int x_coord=-1, int y_coord = -1, List<double> xyz_station=null)
+    {
+        _check_connection();
+        _send_Line("Proj2d3d");
+        _send_Int(x_coord);
+        _send_Int(y_coord);
+        int selection = _recv_Int();
+        double[] xyz = new double[3];
+        Item selected_item = _recv_Item();
+        _recv_XYZ(xyz);
+        _check_status();
+        if (xyz != null)
+        {
+            xyz_station.Add(xyz[0]); xyz_station.Add(xyz[1]); xyz_station.Add(xyz[2]);
+        }
+        return selected_item;
+    }
 
     /// <summary>
     /// The Item class represents an item in RoboDK station. An item can be a robot, a frame, a tool, an object, a target, ... any item visible in the station tree.
@@ -3542,6 +3775,36 @@ public class RoboDK
             Array.Copy(tocolor, 0, combined, 5, 4);
             link._send_Array(combined);
             link._check_status();
+        }
+
+        /// <summary>
+        /// Set the color of an object, tool or robot. A color must in the format COLOR=[R, G, B,(A = 1)] where all values range from 0 to 1.
+        /// Optionally set the RBG to -1 to modify the Alpha channel (transparency)
+        /// </summary>
+        /// <param name="tocolor">color to set</param>
+        public void SetColor(List<double> tocolor)
+        {
+            link._check_connection();
+            link.check_color(tocolor);
+            link._send_Line("S_Color");
+            link._send_Item(this);
+            link._send_ArrayList(tocolor);
+            link._check_status();
+        }
+
+        /// <summary>
+        /// Return the color of an :class:`.Item` (object, tool or robot). If the item has multiple colors it returns the first color available). 
+        /// A color is in the format COLOR=[R, G, B,(A = 1)] where all values range from 0 to 1.
+        /// </summary>
+        /// <returns></returns>
+        public List<double> Color()
+        {
+            link._check_connection();
+            link._send_Line("G_Color");
+            link._send_Item(this);
+            List<double> color = link._recv_ArrayList();
+            link._check_status();
+            return color;
         }
 
         /// <summary>

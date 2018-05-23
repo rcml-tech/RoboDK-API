@@ -25,6 +25,7 @@
 // In this document: pose = transformation matrix = homogeneous matrix = 4x4 matrix
 //
 // More information about the RoboDK API for Python here:
+//     https://robodk.com/doc/en/CsAPI/index.html
 //     https://robodk.com/doc/en/RoboDK-API.html
 //     https://robodk.com/doc/en/PythonAPI/index.html
 //
@@ -44,7 +45,7 @@ using RoboDk.API.Exceptions;
 
 #endregion
 
-namespace RoboDk.API.Model
+namespace RoboDk.API
 {
     /// <summary>
     /// Matrix class for robotics.

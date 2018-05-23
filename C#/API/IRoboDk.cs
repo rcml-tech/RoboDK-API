@@ -1,5 +1,47 @@
-﻿#region Namespaces
+﻿// ----------------------------------------------------------------------------------------------------------
+// Copyright 2018 - RoboDK Inc. - https://robodk.com/
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ----------------------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------------------
+// This file (RoboDK.cs) implements the RoboDK API for C#
+// This file defines the following classes:
+//     Mat: Matrix class, useful pose operations
+//     RoboDK: API to interact with RoboDK
+//     RoboDK.Item: Any item in the RoboDK station tree
+//
+// These classes are the objects used to interact with RoboDK and create macros.
+// An item is an object in the RoboDK tree (it can be either a robot, an object, a tool, a frame, a program, ...).
+// Items can be retrieved from the RoboDK station using the RoboDK() object (such as RoboDK.GetItem() method) 
+//
+// In this document: pose = transformation matrix = homogeneous matrix = 4x4 matrix
+//
+// More information about the RoboDK API for Python here:
+//     https://robodk.com/doc/en/CsAPI/index.html
+//     https://robodk.com/doc/en/RoboDK-API.html
+//     https://robodk.com/doc/en/PythonAPI/index.html
+//
+// More information about RoboDK post processors here:
+//     https://robodk.com/help#PostProcessor
+//
+// Visit the Matrix and Quaternions FAQ for more information about pose/homogeneous transformations
+//     http://www.j3d.org/matrix_faq/matrfaq_latest.html
+//
+// This library includes the mathematics to operate with homogeneous matrices for robotics.
+// ----------------------------------------------------------------------------------------------------------
+
+
+#region Namespaces
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using RoboDk.API.Model;
@@ -13,6 +55,7 @@ namespace RoboDk.API
         #region Properties
 
         Process Process { get; }
+        string LastStatusMessage { get; } // holds any warnings for the last call
 
         string ApplicationDir { get; }
 
@@ -86,6 +129,40 @@ namespace RoboDk.API
         /// <returns>Newly created Program Item</returns>
         Item AddProgram(string name, Item robot = null);
 
+        /// <summary>
+        /// Add a new empty station.
+        /// </summary>
+        /// <param name="name">Name of the station</param>
+        /// <returns>Newly created station Item</returns>
+        Item AddStation(string name);
+
+        /// <summary>
+        /// Add a new robot machining project. Machining projects can also be used for 3D printing, following curves and following points. 
+        /// It returns the newly created :class:`.Item` containing the project settings.
+        /// Tip: Use the macro /RoboDK/Library/Macros/MoveRobotThroughLine.py to see an example that creates a new "curve follow project" given a list of points to follow(Option 4).
+        /// </summary>
+        /// <param name="name">Name of the project settings</param>
+        /// <param name="itemrobot">Robot to use for the project settings(optional). It is not required to specify the robot if only one robot or mechanism is available in the RoboDK station.</param>
+        /// <returns></returns>
+        Item AddMachiningProject(string name = "Curve follow settings", Item itemrobot = null);
+
+        /// <summary>
+        /// Returns the list of open stations in RoboDK
+        /// </summary>
+        /// <returns></returns>
+        List<Item> GetOpenStation();
+
+        /// <summary>
+        /// Set the active station (project currently visible)
+        /// </summary>
+        /// <param name="station">station item, it can be previously loaded as an RDK file</param>
+        void SetActiveStation(Item station);
+
+        /// <summary>
+        /// Returns the active station item (station currently visible)
+        /// </summary>
+        /// <returns></returns>
+        Item GetActiveStation();
 
         /// <summary>
         /// Display/render the scene: update the display. 
@@ -145,6 +222,11 @@ namespace RoboDk.API
         void ShowRoboDK();
 
         /// <summary>
+        /// Fit all
+        /// </summary>
+        void FitAll();
+
+        /// <summary>
         /// Hides the RoboDK window.
         /// </summary>
         void HideRoboDK();
@@ -202,6 +284,16 @@ namespace RoboDk.API
         /// <returns>added object/curve (use item.Valid() to check if item is valid.)</returns>
         Item AddCurve(Mat curvePoints, Item referenceObject = null, bool addToRef = false,
             ProjectionType projectionType = ProjectionType.AlongNormalRecalc);
+
+        /// <summary>
+        /// Adds a list of points to an object. The provided points must be a list of vertices. A vertex normal can be provided optionally.
+        /// </summary>
+        /// <param name="points">list of points as a matrix (3xN matrix, or 6xN to provide point normals as ijk vectors)</param>
+        /// <param name="reference_object">item to attach the newly added geometry (optional)</param>
+        /// <param name="add_to_ref">If True, the points will be added as part of the object in the RoboDK item tree (a reference object must be provided)</param>
+        /// <param name="projection_type">Type of projection.Use the PROJECTION_* flags.</param>
+        /// <returns>added object/shape (0 if failed)</returns>
+        Item AddPoints(Mat points, Item reference_object = null, bool add_to_ref = false, ProjectionType projection_type = ProjectionType.AlongNormalRecalc);
 
         /// <summary>
         /// Projects a point given its coordinates.
@@ -371,18 +463,6 @@ namespace RoboDk.API
         void SetParameter(string parameter, string value);
 
         /// <summary>
-        /// Set the active station (project currently visible)
-        /// </summary>
-        /// <param name="station">station item, it can be previously loaded as an RDK file</param>
-        void SetActiveStation(Item station);
-
-        /// <summary>
-        /// Returns the active station item (station currently visible)
-        /// </summary>
-        /// <returns></returns>
-        Item GetActiveStation();
-
-        /// <summary>
         /// Takes a laser tracker measurement with respect to its own reference frame. If an estimate point is provided, the
         /// laser tracker will first move to those coordinates. 
         /// </summary>
@@ -498,13 +578,31 @@ namespace RoboDk.API
         bool SetRobotParams(Item robot, double[][] dhm, Mat poseBase, Mat poseTool);
 
         /// <summary>
+        /// Create a new robot or mechanism.
+        /// </summary>
+        /// <param name="type">Type of the mechanism</param>
+        /// <param name="list_obj">list of object items that build the robot</param>
+        /// <param name="param">robot parameters in the same order as shown in the RoboDK menu: Utilities-Build Mechanism or robot</param>
+        /// <param name="joints_build">current state of the robot(joint axes) to build the robot</param>
+        /// <param name="joints_home">joints for the home position(it can be changed later)</param>
+        /// <param name="joints_senses"></param>
+        /// <param name="joints_lim_low"></param>
+        /// <param name="joints_lim_high"></param>
+        /// <param name="base_frame"></param>
+        /// <param name="tool"></param>
+        /// <param name="name"></param>
+        /// <param name="robot">existing robot in the station to replace it(optional)</param>
+        /// <returns></returns>
+        Item BuildMechanism(int type, List<Item> list_obj, List<double> param, List<double> joints_build, List<double> joints_home, List<double> joints_senses, List<double> joints_lim_low, List<double> joints_lim_high, Mat base_frame = null, Mat tool = null, string name = "New robot", Item robot = null);
+
+        /// <summary>
         /// Open a simulated 2D camera view. 
         /// Returns a handle pointer that can be used in case more than one simulated view is used.
         /// </summary>
         /// <param name="item">Reference frame or other object to attach the camera</param>
         /// <param name="cameraParameters">Camera parameters as a string. Refer to the documentation for more information.</param>
         /// <returns>Camera pointer/handle. Keep the handle if more than 1 simulated camera is used</returns>
-        ulong Cam2DAdd(Item item, string cameraParameters = "");
+        long Cam2DAdd(Item item, string cameraParameters = "");
 
         /// <summary>
         /// Take a snapshot from a simulated camera view and save it to a file. 
@@ -512,7 +610,7 @@ namespace RoboDk.API
         /// <param name="fileSaveImg">file path to save.Formats supported include PNG, JPEG, TIFF, ...</param>
         /// <param name="camHandle">Camera handle(pointer returned by Cam2DAdd)</param>
         /// <returns>Return true if image has been saved successfully.</returns>
-        bool Cam2DSnapshot(string fileSaveImg, ulong camHandle = 0);
+        bool Cam2DSnapshot(string fileSaveImg, long camHandle = 0);
 
         /// <summary>
         /// Closes all camera windows or one specific camera if the camera handle is provided. 
@@ -522,7 +620,7 @@ namespace RoboDk.API
         /// Leave to 0 to close all simulated views.
         /// </param>
         /// <returns>Returns true if success, false otherwise.</returns>
-        bool Cam2DClose(ulong camHandle = 0);
+        bool Cam2DClose(long camHandle = 0);
 
         /// <summary>
         /// Set the parameters of the simulated camera.
@@ -530,7 +628,7 @@ namespace RoboDk.API
         /// <param name="cameraParameters">parameter settings according to the parameters supported by Cam2D_Add</param>
         /// <param name="camHandle">camera handle (optional)</param>
         /// <returns>Returns true if success, false otherwise.</returns>
-        bool Cam2DSetParameters(string cameraParameters, ulong camHandle = 0);
+        bool Cam2DSetParameters(string cameraParameters, long camHandle = 0);
 
 
         /// <summary>
@@ -543,7 +641,27 @@ namespace RoboDk.API
         /// Returns the list of items selected (it can be one or more items)
         /// </summary>
         /// <returns>Returns the list of selected items.</returns>
-        List<Item> GetSelectedItemList();
+        List<Item> GetSelectedItems();
+
+        /// <summary>
+        /// Set the interactive mode to define the behavior when navigating and selecting items in RoboDK's 3D view.
+        /// </summary>
+        /// <param name="mode_type">The mode type defines what accion occurs when the 3D view is selected (Select object, Pan, Rotate, Zoom, Move Objects, ...)</param>
+        /// <param name="default_ref_flags">When a movement is specified, we can provide what motion we allow by default with respect to the coordinate system (set apropriate flags)</param>
+        /// <param name="custom_items">Provide a list of optional items to customize the move behavior for these specific items (important: the lenght of custom_ref_flags must match)</param>
+        /// <param name="custom_ref_flags">Provide a matching list of flags to customize the movement behavior for specific items</param>
+        void SetInteractiveMode(InteractiveType mode_type = InteractiveType.MOVE, DisplayRefType default_ref_flags = DisplayRefType.DEFAULT, List<Item> custom_items = null, List<InteractiveType> custom_ref_flags = null);
+
+        /// <summary>
+        /// Returns the position of the cursor as XYZ coordinates (by default), or the 3D position of a given set of 2D coordinates of the window (x & y coordinates in pixels from the top left corner)
+        /// The XYZ coordinates returned are given with respect to the RoboDK station(absolute reference).
+        /// If no coordinates are provided, the current position of the cursor is retrieved.
+        /// </summary>
+        /// <param name="x_coord">X coordinate in pixels</param>
+        /// <param name="y_coord">Y coordinate in pixels</param>
+        /// <param name="xyz_station"></param>
+        /// <returns></returns>
+        Item GetCursorXYZ(int x_coord = -1, int y_coord = -1, List<double> xyz_station = null);
 
         /// <summary>
         /// 
