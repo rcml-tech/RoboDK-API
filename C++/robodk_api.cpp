@@ -1769,6 +1769,39 @@ void RoboDK::ShowMessage(const QString &message, bool popup){
 }
 
 /// <summary>
+/// Makes a copy of an item (same as Ctrl+C), which can be pasted (Ctrl+V) using Paste_Item().
+///    Example:
+///        RL = Robolink()
+///        object = RL.Item('My Object');
+///        object.Copy()         #RL.Copy(object); also works
+///        newobject = RL.Paste();
+///        newobject.setName('My Object (copy 1)');
+///        newobject = RL.Paste();
+///        newobject.setName('My Object (copy 2)');
+/// </summary>
+/// <param name="item">item</param>
+void RoboDK::Copy(Item item) {
+  _check_connection();
+  _send_Line("Copy");
+  _send_Item(item);
+  _check_status();
+}
+
+/// <summary>
+/// Pastes the copied item (same as Ctrl+V). Needs to be used after Copy_Item(). See Copy_Item() for an example.
+/// </summary>
+/// <param name="item">(optional) parent to paste to</param>
+/// <returns>Newly added object. Check with item.Valid() for a successful load</returns>
+Item RoboDK::Paste(const Item *parent) {
+  _check_connection();
+  _send_Line("Paste");
+  _send_Item(parent);
+  Item newitem = _recv_Item();
+  _check_status();
+  return newitem;
+}
+
+/// <summary>
 /// Loads a file and attaches it to parent. It can be any file supported by robodk.
 /// </summary>
 /// <param name="filename">absolute path of the file</param>
