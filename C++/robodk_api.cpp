@@ -425,6 +425,30 @@ bool Item::Valid(){
 }
 
 /// <summary>
+/// Moves the item to another location item node "parent" (a different parent within the tree).
+/// </summary>
+/// <param name="parent">parent -> parent item to attach the item</param>
+void Item::setParent(const Item &parent) {
+  _RDK->_check_connection();
+  _RDK->_send_Line("S_Parent");
+  _RDK->_send_Item(this);
+  _RDK->_send_Item(parent);
+  _RDK->_check_status();
+}
+
+/// <summary>
+/// Moves the item to another location (parent) without changing the current position in the station.
+/// </summary>
+/// <param name="parent">parent -> parent to attach the item</param>
+void Item::setParentStatic(const Item &parent) {
+  _RDK->_check_connection();
+  _RDK->_send_Line("S_Parent_Static");
+  _RDK->_send_Item(this);
+  _RDK->_send_Item(parent);
+  _RDK->_check_status();
+}
+
+/// <summary>
 /// Attaches the closest object to the provided tool (see also: Set_Parent_Static).
 /// </summary>
 /// <returns>item -> returns the item that was attached (item.Valid() is False if none found)</returns>
