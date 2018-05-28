@@ -201,6 +201,8 @@ public:
     void setFlagsItem(Item item, int flags = FLAG_ITEM_ALL);
     int getFlagsItem(Item item);
     void ShowMessage(const QString &message, bool popup = true);
+    void Copy(Item item);
+    Item Paste(const Item *parent = NULL);
     Item AddFile(const QString &filename, const Item *parent=NULL);
     void Save(const QString &filename, const Item *itemsave=NULL);
 
