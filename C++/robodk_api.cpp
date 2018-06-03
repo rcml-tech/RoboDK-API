@@ -2284,13 +2284,19 @@ bool RoboDK::_check_status(){
             strproblems = "Invalid item provided: The item identifier provided is not valid or it does not exist.";
         } else if (status == 2) { //output warning only
             strproblems = _recv_Line();
+#ifdef _DEBUG
             qDebug() << "RoboDK API WARNING: " << strproblems;
+#endif
             return 0;
         } else if (status == 3){ // output error
             strproblems = _recv_Line();
+#ifdef _DEBUG
             qDebug() << "RoboDK API ERROR: " << strproblems;
+#endif
         } else if (status == 9) {
+#ifdef _DEBUG
             qDebug() << "Invalid RoboDK License";
+#endif
         }
         //print(strproblems);
         //throw new RDKException(strproblems); //raise Exception(strproblems)
@@ -2299,7 +2305,9 @@ bool RoboDK::_check_status(){
         //status = status
     } else  {
         //throw new RDKException("Communication problems with the RoboDK API"); //raise Exception('Problems running function');
+#ifdef _DEBUG
         qDebug() << "Communication problems with the RoboDK API";
+#endif
     }
     return status;
 }
