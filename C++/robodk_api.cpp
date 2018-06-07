@@ -589,6 +589,20 @@ void Item::setGeometryPose(Mat pose){
 }
 
 /// <summary>
+/// Set the color of an object, tool or robot. 
+/// A color must in the format COLOR = [R, G, B, (A = 1)] where all values range from 0 to 1.
+/// </summary>
+/// <param name="tocolor">color to set</param>
+void Item::setColor(const tColor tocolor) {
+    _RDK->_check_color(tocolor);
+    _RDK->_check_connection();
+    _RDK->_send_Line("S_Color");
+    _RDK->_send_Item(this);
+    _RDK->_send_Array(tocolor, 4);
+    _RDK->_check_status();
+}
+
+/// <summary>
 /// Returns the position (pose) the object geometry with respect to its own reference frame. This procedure works for tools and objects.
 /// </summary>
 /// <returns>4x4 homogeneous matrix (pose)</returns>
@@ -2284,13 +2298,21 @@ bool RoboDK::_check_status(){
             strproblems = "Invalid item provided: The item identifier provided is not valid or it does not exist.";
         } else if (status == 2) { //output warning only
             strproblems = _recv_Line();
+#ifdef _DEBUG
             qDebug() << "RoboDK API WARNING: " << strproblems;
+#endif
             return 0;
         } else if (status == 3){ // output error
             strproblems = _recv_Line();
+#ifdef _DEBUG
             qDebug() << "RoboDK API ERROR: " << strproblems;
+#endif
+            throw RDKException(strproblems);
         } else if (status == 9) {
+#ifdef _DEBUG
             qDebug() << "Invalid RoboDK License";
+#endif
+            throw RDKException("Invalid RoboDK License");
         }
         //print(strproblems);
         //throw new RDKException(strproblems); //raise Exception(strproblems)
@@ -2299,12 +2321,23 @@ bool RoboDK::_check_status(){
         //status = status
     } else  {
         //throw new RDKException("Communication problems with the RoboDK API"); //raise Exception('Problems running function');
+#ifdef _DEBUG
         qDebug() << "Communication problems with the RoboDK API";
+#endif
+        throw RDKException("Communication problems with the RoboDK API");
     }
     return status;
 }
 
-
+bool RoboDK::_check_color(const tColor color) {
+  for (int i = 0; i < 4; ++i) {
+    if ((color[i] > 1) || (color[i] < 0)) {
+      qDebug() << "WARNING: Color provided is not in the range [0,1] ([r,g,b,a])";
+      return false;
+    }
+  }
+  return true;
+}
 
 void RoboDK::_disconnect(){
     if (_COM != NULL){
@@ -2719,7 +2752,11 @@ void RoboDK::_moveC(const Item *target1, const tJoints *joints1, const Mat *mat_
     }
 }
 
-
+RDKException::RDKException(QString msg) : msg(msg) {}
+RDKException::~RDKException() {}
+QString RDKException::what() {
+  return msg;
+}
 
 
 
