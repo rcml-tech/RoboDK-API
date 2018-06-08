@@ -93,6 +93,9 @@ typedef double tXYZWPR[6];
 /// @brief tXYZ (mm) represents a position or a vector in mm
 typedef double tXYZ[3];
 
+/// @brief tColor represents a color like 4x1 array [R,G,B,A]
+typedef double tColor[4];
+
 
 /// @brief The robot configuration defines a specific state of the robot without crossing any singularities. Changing the configuration requires crossing a singularity.
 /// There are 2x2x2=8 different configurations.
@@ -426,6 +429,7 @@ private:
 
     bool _check_connection();
     bool _check_status();
+    bool _check_color(const tColor color);
 
     bool _waitline();
     QString _recv_Line();//QString &string);
@@ -484,6 +488,9 @@ public:
     Mat Pose();
     void setGeometryPose(Mat pose);
     Mat GeometryPose();
+
+    void setColor(const tColor color);
+
     void setHtool(Mat pose);
     Mat Htool();
     Mat PoseTool();
@@ -559,7 +566,16 @@ private:
     qint32 _TYPE;
 };
 
+class ROBODK RDKException {
+  QString msg;
 
+public:
+  RDKException(QString msg);
+  ~RDKException();
+
+  QString what();
+
+};
 
 
 
