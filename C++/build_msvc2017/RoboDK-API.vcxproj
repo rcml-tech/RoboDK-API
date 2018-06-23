@@ -91,7 +91,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>RDK_WITH_EXPORTS;RDK_EXPORTS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RDK_WITH_EXPORTS;RDK_EXPORTS;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile />
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\qt\msvc2015\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
