@@ -166,7 +166,7 @@ tJoints::tJoints(const tJoints &copy){
 tJoints::tJoints(const tMatrix2D *mat2d, int column, int ndofs){
     if (Matrix2D_Size(mat2d, 2) >= column){
         nDOFs = 0;
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
         qDebug()<<"Warning: tMatrix2D column outside range when creating joints";
 #endif
     }
@@ -2300,18 +2300,18 @@ bool RoboDK::_check_status(){
             strproblems = "Invalid item provided: The item identifier provided is not valid or it does not exist.";
         } else if (status == 2) { //output warning only
             strproblems = _recv_Line();
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
             qDebug() << "RoboDK API WARNING: " << strproblems;
 #endif
             return 0;
         } else if (status == 3){ // output error
             strproblems = _recv_Line();
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
             qDebug() << "RoboDK API ERROR: " << strproblems;
 #endif
             throw RDKException(strproblems);
         } else if (status == 9) {
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
             qDebug() << "Invalid RoboDK License";
 #endif
             throw RDKException("Invalid RoboDK License");
@@ -2323,7 +2323,7 @@ bool RoboDK::_check_status(){
         //status = status
     } else  {
         //throw new RDKException("Communication problems with the RoboDK API"); //raise Exception('Problems running function');
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
         qDebug() << "Communication problems with the RoboDK API";
 #endif
         throw RDKException("Communication problems with the RoboDK API");
@@ -2334,7 +2334,7 @@ bool RoboDK::_check_status(){
 bool RoboDK::_check_color(const tColor color) {
   for (int i = 0; i < 4; ++i) {
     if ((color[i] > 1) || (color[i] < 0)) {
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
       qDebug() << "WARNING: Color provided is not in the range [0,1] ([r,g,b,a])";
 #endif
       return false;
@@ -2354,13 +2354,13 @@ void RoboDK::_disconnect(){
 bool RoboDK::_connect_smart(){
     //Establishes a connection with robodk. robodk must be running, otherwise, it will attempt to start it
     if (_connect()){
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
         qDebug() << "The RoboDK API is connected";
 #endif
         return true;
     }
 
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
     qDebug() << "...Trying to start RoboDK: " << _ROBODK_BIN << " " << _ARGUMENTS;
 #endif
     // Start RoboDK
@@ -2372,15 +2372,15 @@ bool RoboDK::_connect_smart(){
     _PROCESS = p->processId();
     while (p->canReadLine() || p->waitForReadyRead(5000)){
         QString line = QString::fromUtf8(p->readLine().trimmed());
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
         //qDebug() << "RoboDK process: " << line;
 #endif
         if (line.contains("Running", Qt::CaseInsensitive)){
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
             qDebug() << "RoboDK is Running... Connecting API";
 #endif
             bool is_connected = _connect();
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
             if (is_connected){
                 qDebug() << "The RoboDK API is connected";
             } else {
@@ -2390,7 +2390,7 @@ bool RoboDK::_connect_smart(){
             return is_connected;
         }
     }
-#ifdef _DEBUG
+#ifdef ROBODK_DEBUG
     qDebug() << "Could not start RoboDK!";
 #endif
     return false;
