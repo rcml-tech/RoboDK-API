@@ -451,6 +451,18 @@ void Item::setParentStatic(const Item &parent) {
 }
 
 /// <summary>
+/// Return the parent item of this item (:class:`.Item`)
+/// </summary>
+Item Item::Parent() {
+  _RDK->_check_connection();
+  _RDK->_send_Line("G_Parent");
+  _RDK->_send_Item(this);
+  Item parent = _RDK->_recv_Item();
+  _RDK->_check_status();
+  return parent;
+}
+
+/// <summary>
 /// Attaches the closest object to the provided tool (see also: Set_Parent_Static).
 /// </summary>
 /// <returns>item -> returns the item that was attached (item.Valid() is False if none found)</returns>

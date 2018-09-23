@@ -475,6 +475,7 @@ public:
     bool Valid();
     
     void setParent(const Item &parent);
+    Item Parent();
     void setParentStatic(const Item &parent);
     Item AttachClosest();
     void DetachAll(const Item &parent = NULL);
