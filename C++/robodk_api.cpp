@@ -2263,6 +2263,34 @@ QList<Item> RoboDK::Selection(){
     return list_items;
 }
 
+int RoboDK::Spray_Add(Item *item_tool, Item *item_object) {
+  _check_connection();
+
+  _send_Line("Gun_Add");
+  _send_Item(item_tool);
+  _send_Item(item_object);
+
+  _send_Line("");
+  _send_Matrix2D(NULL);
+  _send_Matrix2D(NULL);
+
+  int id_spray = _recv_Int();
+  _check_status();
+  return id_spray;
+}
+
+int RoboDK::Spray_SetState(int state, int id_spray) {
+  _check_connection();
+
+  _send_Line("Gun_SetState");
+  _send_Int(id_spray);
+  _send_Int(state);
+
+  int success = _recv_Int();
+  _check_status();
+  return success;
+
+}
 
 
 

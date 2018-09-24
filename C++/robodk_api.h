@@ -240,6 +240,9 @@ public:
     QString License();
     QList<Item> Selection();
 
+    int Spray_Add(Item *item_tool = NULL, Item *item_object = NULL);
+    int Spray_SetState(int state = SPRAY_ON, int id_spray = -1);
+
 
 
 public:
