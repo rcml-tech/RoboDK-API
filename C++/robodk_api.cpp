@@ -2263,16 +2263,16 @@ QList<Item> RoboDK::Selection(){
     return list_items;
 }
 
-int RoboDK::Spray_Add(Item *item_tool, Item *item_object) {
+int RoboDK::Spray_Add(const Item *item_tool, const Item *item_object, const QString &params, tMatrix2D *points, tMatrix2D *geometry) {
   _check_connection();
 
   _send_Line("Gun_Add");
   _send_Item(item_tool);
   _send_Item(item_object);
 
-  _send_Line("");
-  _send_Matrix2D(NULL);
-  _send_Matrix2D(NULL);
+  _send_Line(params);
+  _send_Matrix2D(points);
+  _send_Matrix2D(geometry);
 
   int id_spray = _recv_Int();
   _check_status();
@@ -2717,10 +2717,17 @@ bool RoboDK::_recv_Matrix2D(tMatrix2D **mat){ // needs to delete after!
     return false;// we should never arrive here...
 }
 bool RoboDK::_send_Matrix2D(tMatrix2D *mat){
-    if (_COM == NULL || !_COM->isOpen()){ return false; }
+    if (mat == NULL) {
+      _send_Int(0);
+      _send_Int(0);
+      return true;
+    }
+
+    if (_COM == NULL || !_COM->isOpen()) { return false; }
     QDataStream ds(_COM);
     ds.setFloatingPointPrecision(QDataStream::DoublePrecision);
     //ds.setByteOrder(QDataStream::LittleEndian);
+
     qint32 dim1 = Matrix2D_Size(mat, 1);
     qint32 dim2 = Matrix2D_Size(mat, 2);
     bool ok1 = _send_Int(dim1);
