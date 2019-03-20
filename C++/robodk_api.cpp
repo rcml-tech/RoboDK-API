@@ -2289,9 +2289,18 @@ int RoboDK::Spray_SetState(int state, int id_spray) {
   int success = _recv_Int();
   _check_status();
   return success;
-
 }
 
+int RoboDK::Spray_Clear(int id_spray) {
+  _check_connection();
+
+  _send_Line("Gun_Clear");
+  _send_Int(id_spray);
+
+  int success = _recv_Int();
+  _check_status();
+  return success;
+}
 
 
 

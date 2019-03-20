@@ -242,6 +242,7 @@ public:
 
     int Spray_Add(const Item *item_tool = NULL, const Item *item_object = NULL, const QString &params = "", tMatrix2D *points = NULL, tMatrix2D *geometry = NULL);
     int Spray_SetState(int state = SPRAY_ON, int id_spray = -1);
+    int Spray_Clear(int id_spray = -1);
 
 
 
